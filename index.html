@@ -2159,7 +2159,7 @@
     e.rot += dt * 1.2;
     e.shootCd -= dt;
     if (e.shootCd <= 0 && d < 640 && mul > 0) {
-      e.shootCd = 2.7;
+      e.shootCd = 1.8 + Math.random() * 0.5;
       ebullet(e.x, e.y, Math.atan2(dy, dx), 235, 1, '#ff9f43');
     }
   }
