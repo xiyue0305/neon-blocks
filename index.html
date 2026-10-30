@@ -465,6 +465,11 @@
       awName: '跳弹', awDesc: '弹射次数再 +2，弹射距离更远',
       awake: function () { P.bounce += 2; P.bounceRange = 420; } },
 
+    { id: 'overload', name: '超载', color: '#ff6b9a', max: 0, weight: 0.8,
+      desc: '伤害 +7%，暴击率 +1%',
+      apply: function () { P.dmg *= 1.07; P.crit = Math.min(0.95, P.crit + 0.01); },
+      awName: '', awDesc: '', awake: null },
+
     { id: 'multi', name: '双选', color: '#ff8fa3', max: 0, weight: 0.6,
       desc: '每次升级可以多选 1 项强化',
       apply: function () { P.extraPicks += 1; },
@@ -1018,7 +1023,8 @@
 
   function waveHpScale(w) {
     w = Math.max(0, w);
-    return 1 + 0.22 * w + 0.10 * w * w;
+    if (w <= 30) return 1 + 0.22 * w + 0.10 * w * w;
+    return 97 + 5.5 * (w - 30);
   }
 
   function spawnEnemy(key, x, y) {
@@ -1575,7 +1581,7 @@
       }
     }
 
-    dropXP(e.x, e.y, e.xp);
+    dropXP(e.x, e.y, e.xp * (1 + 0.05 * (S.wave - 1)));
 
     if (!e.boss && Math.random() < (e.r > 15 ? 0.3 : 0.035) && P.hp < P.maxHp && pickups.length < 40) {
       pickups.push({ type: 'heal', x: e.x, y: e.y, r: 9, life: 10, phase: rand(0, TAU) });
