@@ -641,8 +641,8 @@
     brute:   { r: 24, hp: 125, speed: 56,  score: 45, xp: 3, color: '#b388ff', sides: 6, split: 2 },
     shooter: { r: 12, hp: 24,  speed: 64,  score: 22, xp: 2, color: '#ff9f43', sides: 4, split: 0 },
     charger: { r: 14, hp: 46,  speed: 76,  score: 20, xp: 2, color: '#ff2d55', sides: 5, split: 0 },
-    mage:    { r: 15, hp: 58,  speed: 62,  score: 55, xp: 2, color: '#c77dff', sides: 5, split: 0 },
-    priest:  { r: 14, hp: 64,  speed: 70,  score: 50, xp: 2, color: '#8dffc8', sides: 8, split: 0 }
+    mage:    { r: 15, hp: 42,  speed: 58,  score: 45, xp: 2, color: '#c77dff', sides: 5, split: 0 },
+    priest:  { r: 14, hp: 46,  speed: 66,  score: 40, xp: 2, color: '#8dffc8', sides: 8, split: 0 }
   };
 
   var BOSS_TYPES = {
@@ -1224,13 +1224,20 @@
   }
 
   function pickType() {
-    var w = S.wave, r = Math.random();
-    if (w >= 15 && r < 0.055) return 'priest';
-    if (w >= 12 && r < 0.13) return 'mage';
-    if (w >= 9 && r < 0.23) return 'shooter';
-    if (w >= 6 && r < 0.37) return 'charger';
-    if (w >= 5 && r < 0.53) return 'brute';
-    if (w >= 3 && r < 0.77) return 'swift';
+    var w = S.wave, r = Math.random(), p = 0;
+    // 法师第 10 波登场，牧师第 16 波登场，概率随波次阶梯上升
+    if (w >= 16) {
+      p += (w >= 28 ? 0.05 : 0.03);
+      if (r < p) return 'priest';
+    }
+    if (w >= 10) {
+      p += (w >= 25 ? 0.09 : (w >= 15 ? 0.06 : 0.035));
+      if (r < p) return 'mage';
+    }
+    if (w >= 9) { p += 0.10; if (r < p) return 'shooter'; }
+    if (w >= 6) { p += 0.14; if (r < p) return 'charger'; }
+    if (w >= 5) { p += 0.16; if (r < p) return 'brute'; }
+    if (w >= 3) { p += 0.24; if (r < p) return 'swift'; }
     return 'grunt';
   }
 
@@ -2322,7 +2329,7 @@
         var o = enemies[i];
         if (o === e || o.boss || o.hp >= o.maxHp) continue;
         if (d2(o.x, o.y, e.x, e.y) > 300 * 300) continue;
-        o.hp = Math.min(o.maxHp, o.hp + o.maxHp * 0.18 + 14);
+        o.hp = Math.min(o.maxHp, o.hp + o.maxHp * 0.12);
         healed++;
         arcs.push({ x1: e.x, y1: e.y, x2: o.x, y2: o.y, life: 0.3, max: 0.3 });
         burst(o.x, o.y, '#8dffc8', 5, 110);
