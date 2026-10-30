@@ -1231,10 +1231,10 @@
       if (r < p) return 'priest';
     }
     if (w >= 10) {
-      p += (w >= 25 ? 0.09 : (w >= 15 ? 0.06 : 0.035));
+      p += (w >= 25 ? 0.13 : (w >= 15 ? 0.09 : 0.05));
       if (r < p) return 'mage';
     }
-    if (w >= 9) { p += 0.10; if (r < p) return 'shooter'; }
+    if (w >= 9) { p += 0.16; if (r < p) return 'shooter'; }
     if (w >= 6) { p += 0.14; if (r < p) return 'charger'; }
     if (w >= 5) { p += 0.16; if (r < p) return 'brute'; }
     if (w >= 3) { p += 0.24; if (r < p) return 'swift'; }
