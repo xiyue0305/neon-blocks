@@ -608,6 +608,16 @@
     nova: 0, novaT: 0, novaR: 190, novaDmg: 50, novaFreeze: false
   };
 
+  var CRIT_CAP = 0.95;
+
+  // 暴击率超过上限的部分，按 1 : 1.5 转成暴击伤害
+  function addCrit(v) {
+    var room = CRIT_CAP - P.crit;
+    if (v <= room) { P.crit += v; return; }
+    P.crit = CRIT_CAP;
+    P.critDmg += (v - room) * 1.5;
+  }
+
   var DMG_COLORS = {
     normal: '#ffefc2',
     crit: '#ff4d6d',
@@ -646,15 +656,15 @@
   var UP = [
     { id: 'dmg', name: '火力强化', color: '#ff5d7a', max: 4,
       desc: '子弹伤害 +25%，暴击率 +3%',
-      apply: function () { P.dmg *= 1.25; P.crit = Math.min(0.9, P.crit + 0.03); },
+      apply: function () { P.dmg *= 1.25; addCrit(0.03); },
       awName: '过载弹芯', awDesc: '暴击率 +18%，暴击伤害 +25%',
-      awake: function () { P.crit = Math.min(0.9, P.crit + 0.16); P.critDmg += 0.25; } },
+      awake: function () { addCrit(0.18); P.critDmg += 0.25; } },
 
     { id: 'crit', name: '致命一击', color: '#ff8fa3', max: 3,
       desc: '暴击率 +12%，暴击伤害 +30%',
-      apply: function () { P.crit = Math.min(0.9, P.crit + 0.12); P.critDmg += 0.30; },
+      apply: function () { addCrit(0.12); P.critDmg += 0.30; },
       awName: '处决', awDesc: '暴击率 +15%，暴击伤害 +70%',
-      awake: function () { P.crit = Math.min(0.95, P.crit + 0.12); P.critDmg += 0.7; } },
+      awake: function () { addCrit(0.15); P.critDmg += 0.7; } },
 
     { id: 'rate', name: '急速射击', color: '#ffd166', max: 4,
       desc: '射速 +18%',
@@ -681,8 +691,8 @@
       awake: function () { P.bounce += 2; P.bounceRange = 420; } },
 
     { id: 'overload', name: '超载', color: '#ff6b9a', max: 0, weight: 0.8,
-      desc: '伤害 +7%，暴击率 +1%',
-      apply: function () { P.dmg *= 1.07; P.crit = Math.min(0.95, P.crit + 0.01); },
+      desc: '伤害 +7%，暴击率 +1%（溢出转暴伤）',
+      apply: function () { P.dmg *= 1.07; addCrit(0.01); },
       awName: '', awDesc: '', awake: null },
 
     { id: 'multi', name: '双选', color: '#ff8fa3', max: 0, weight: 0.6,
