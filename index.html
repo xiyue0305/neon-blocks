@@ -20,8 +20,8 @@
   #ui{position:fixed;inset:0;pointer-events:none;padding:14px 16px;
     display:flex;flex-direction:column;justify-content:space-between}
   #topbar{display:flex;gap:9px;flex-wrap:wrap;align-items:flex-start}
-  .stat{background:rgba(10,18,30,.5);border:1px solid rgba(94,231,255,.13);
-    border-radius:12px;padding:5px 12px 6px;backdrop-filter:blur(6px);min-width:76px}
+  .stat{background:rgba(10,18,30,.78);border:1px solid rgba(94,231,255,.13);
+    border-radius:12px;padding:5px 12px 6px;min-width:76px}
   .label{display:block;font-size:10px;letter-spacing:.18em;color:#68809c}
   .value{display:block;font-size:20px;font-weight:700;line-height:1.15;
     font-variant-numeric:tabular-nums;color:#e6f9ff;text-shadow:0 0 14px rgba(94,231,255,.35)}
@@ -41,8 +41,8 @@
 
   #botbar{position:fixed;left:16px;top:82px;display:flex;flex-direction:column;gap:6px;
     max-width:64vw;padding:7px 12px;border-radius:14px;
-    background:rgba(10,18,30,.58);border:1px solid rgba(94,231,255,.18);
-    backdrop-filter:blur(6px);pointer-events:none;
+    background:rgba(10,18,30,.8);border:1px solid rgba(94,231,255,.18);
+    pointer-events:none;
     box-shadow:0 8px 24px rgba(0,0,0,.35)}
   .hudrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
   #hearts{display:flex;gap:8px;padding-left:2px}
@@ -2693,6 +2693,11 @@
     return c;
   }
 
+  function inView(x, y, r) {
+    return x + r > cam.x - 24 && x - r < cam.x + W + 24 &&
+           y + r > cam.y - 24 && y - r < cam.y + H + 24;
+  }
+
   function drawGlow(color, x, y, radius, alpha) {
     var s = glowSprite(color);
     if (!s) return;
@@ -2795,6 +2800,7 @@
   function drawPickups() {
     for (var i = 0; i < pickups.length; i++) {
       var p = pickups[i];
+      if (!inView(p.x, p.y, 20)) continue;
       var pulse = 1 + Math.sin(S.time * 6 + p.phase) * 0.12;
       var a = p.life < 2 ? (0.35 + 0.65 * Math.abs(Math.sin(p.life * 8))) : 1;
 
@@ -2830,6 +2836,7 @@
   function drawEnemies() {
     for (var i = 0; i < enemies.length; i++) {
       var e = enemies[i];
+      if (!inView(e.x, e.y, e.r + 40)) continue;
       var pulse = 1 + Math.sin(S.time * 5 + e.phase) * 0.05;
 
       if (e.boss) {
@@ -2928,6 +2935,7 @@
     ctx.globalCompositeOperation = 'lighter';
     for (var i = 0; i < ebullets.length; i++) {
       var b = ebullets[i];
+      if (!inView(b.x, b.y, 24)) continue;
       drawGlow(b.color, b.x, b.y, 22, 0.75);
       ctx.fillStyle = b.color;
       ctx.beginPath(); ctx.arc(b.x, b.y, b.r * 0.72, 0, TAU); ctx.fill();
@@ -2942,6 +2950,7 @@
     ctx.lineCap = 'round';
     for (var i = 0; i < bullets.length; i++) {
       var b = bullets[i];
+      if (!inView(b.x, b.y, 16)) continue;
       ctx.strokeStyle = hexA(b.color, 0.18);
       ctx.lineWidth = b.crit ? 12 : 9;
       ctx.beginPath();
@@ -3118,6 +3127,7 @@
     ctx.globalCompositeOperation = 'lighter';
     for (var i = 0; i < particles.length; i++) {
       var p = particles[i];
+      if (!inView(p.x, p.y, 10)) continue;
       var a = p.life / p.max;
       ctx.globalAlpha = 0.85 * a;
       ctx.fillStyle = p.color;
@@ -3136,12 +3146,12 @@
     ctx.lineJoin = 'round';
     for (var i = 0; i < dmgTexts.length; i++) {
       var t = dmgTexts[i];
+      if (!inView(t.x, t.y, 40)) continue;
       var a = Math.min(1, t.life / t.max * 2.4);
       ctx.globalAlpha = a;
       ctx.font = (t.crit ? '800 ' : '700 ') + t.size + 'px "Microsoft YaHei",system-ui,sans-serif';
       ctx.lineWidth = t.crit ? 4 : 3;
-      ctx.strokeStyle = 'rgba(3,6,12,0.9)';
-      ctx.strokeText(t.text, t.x, t.y);
+      if (!TOUCH) { ctx.strokeStyle = 'rgba(3,6,12,0.9)'; ctx.strokeText(t.text, t.x, t.y); }
       ctx.fillStyle = t.color;
       ctx.fillText(t.text, t.x, t.y);
     }
