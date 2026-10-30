@@ -323,6 +323,7 @@
   }
   window.addEventListener('resize', resize);
 
+  // 镜头：平滑跟随玩家，并限制在世界边界内
   function updateCamera(dt, snap) {
     var tx = clamp(P.x - W / 2, -CAM_PAD, Math.max(-CAM_PAD, WORLD.w - W + CAM_PAD));
     var ty = clamp(P.y - H / 2, -CAM_PAD, Math.max(-CAM_PAD, WORLD.h - H + CAM_PAD));
@@ -1206,6 +1207,7 @@
     S.bannerColor = color || '#5ee7ff';
   }
 
+  // 开始第 n 波：算总怪数、决定是不是 BOSS 波、弹横幅
   function startWave(n) {
     S.wave = n;
     S.mode = 'wave';
@@ -1232,6 +1234,7 @@
     return Math.max(0.42, 1.15 - S.wave * 0.045);
   }
 
+  // 一波清完：给分、回血、进 3 秒间歇
   function clearWave() {
     S.mode = 'intermission';
     S.interT = 3.0;
@@ -1285,6 +1288,7 @@
     return base * (1 + 0.05 * (w - 30));
   }
 
+  // 按类型生成一只小怪，血量/速度随波次放大
   function spawnEnemy(key, x, y) {
     var t = TYPES[key];
     var w = S.wave - 1;
@@ -1303,6 +1307,7 @@
     });
   }
 
+  // 每 10 波生成 BOSS，血量跟着波次曲线走
   function spawnBoss(wave) {
     var idx = Math.max(1, Math.round(wave / 10));
     var type = idx === 1 ? 'charger' : (idx === 2 ? 'gunner' : (idx === 3 ? 'summoner' : 'overlord'));
@@ -1328,6 +1333,7 @@
     burst(bx, by, t.color, 30, 340);
   }
 
+  // BOSS 召唤援军；elite=true 时召唤更硬的重装/冲锋
   function spawnBossAdds(n, elite) {
     if (!S.boss) return;
     for (var i = 0; i < n; i++) {
@@ -1343,6 +1349,7 @@
     }
   }
 
+  // 波次状态机：刷怪 → 清空 → 间歇 → 下一波
   function updateWaves(dt) {
     if (S.mode === 'intermission') {
       S.interT -= dt;
@@ -1372,6 +1379,7 @@
     if (pickups.length > 110) pickups.splice(0, pickups.length - 110);
   }
 
+  // 加经验；够了就升级（可能一次升好几级）
   function addXP(v) {
     S.xp += v * P.xpMul;
     while (S.xp >= S.xpNeed) {
@@ -1397,6 +1405,7 @@
     return out;
   }
 
+  // 抽 3 张强化卡，按权重随机，已满级的不出现
   function buildCards() {
     var pool = UP.filter(function (u) { return u.max === 0 || u.lvl < u.max; });
     var choices = pickWeighted(pool, 3);
@@ -1436,6 +1445,7 @@
 
   var choices = [];
 
+  // 打开升级选卡界面，一次性算出能选几次
   function openLevelUp() {
     S.state = 'levelup';
     pointer.active = false;
@@ -1446,6 +1456,7 @@
     tone(880, 0.12, 'sine', 0.03, 1200);
   }
 
+  // 玩家选中第 i 张卡：升级、触发觉醒、扣掉一次选择
   function chooseUpgrade(i) {
     if (S.state !== 'levelup') return;
     var u = choices[i];
@@ -1479,6 +1490,7 @@
   /* ---------------- 存档 ---------------- */
   var SAVE_KEY = 'neon_save_v1';
 
+  // 存档：只存波次/分数/强化等级，数值读档时重算
   function saveRun() {
     if (S.state !== 'playing' && S.state !== 'paused') return;
     if (!(S.wave > 0)) return;
@@ -1494,6 +1506,7 @@
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(d)); } catch (e) {}
   }
 
+  // 读档并做基本校验，坏档直接当没有
   function loadRun() {
     try {
       var raw = localStorage.getItem(SAVE_KEY);
@@ -1571,6 +1584,7 @@
   }
 
   /* ---------------- 游戏流程 ---------------- */
+  // 开一局；传 save 就是读档继续，不传就是新开局
   function startGame(save) {
     ensureAudio();
     bgmStart();
@@ -1645,6 +1659,7 @@
     refreshContinue();
   }
 
+  // 暂停：压背景音乐、存档、显示暂停面板
   function pause() {
     if (S.state !== 'playing') return;
     S.state = 'paused';
@@ -1683,6 +1698,7 @@
     }
   }
 
+  // 死亡结算：记最高分、清档、停音乐、显示结算面板
   function gameOver() {
     S.state = 'over';
     bgmStop(1.2);
@@ -1771,6 +1787,7 @@
     if (dmgTexts.length > 80) dmgTexts.shift();
   }
 
+  // 统一的掉血入口：扣血、飘伤害数字、播打击音、判死亡
   function damageEnemy(e, dmg, idx, kind) {
     if (!e || e.hp <= 0) return;
     e.hp -= dmg;
@@ -1780,6 +1797,7 @@
     if (e.hp <= 0) killEnemy(e, idx);
   }
 
+  // 范围爆炸：命中圈内所有敌人
   function explode(x, y, radius, dmg, color, kind) {
     color = color || '#ffb066';
     explosions.push({ x: x, y: y, r: radius, t: 0, life: 0.34, color: color });
@@ -1811,6 +1829,7 @@
     if (used.length > 1) tone(1200, 0.06, 'sawtooth', 0.012, 700);
   }
 
+  // 敌人死亡：给分、掉经验、分裂、BOSS 特殊结算
   function killEnemy(e, idx) {
     if (idx < 0 || idx >= enemies.length || enemies[idx] !== e) idx = enemies.indexOf(e);
     if (idx < 0) return;
@@ -1868,6 +1887,7 @@
   }
 
   /* ---------------- 玩家 ---------------- */
+  // 玩家每帧：输入移动、闪避无敌、自动射击、捡球吸附
   function updatePlayer(dt) {
     var dir = moveInput();
     var ix = dir.x, iy = dir.y;
@@ -1940,6 +1960,7 @@
     }
   }
 
+  // 生成一颗子弹，顺便算这次是不是暴击
   function spawnBullet(x, y, ang, opt) {
     var crit = !opt.noCrit && Math.random() < P.crit;
     bullets.push({
@@ -2000,6 +2021,7 @@
   }
 
   /* ---------------- 技能：召唤 / 天罚 / 雷霆 / 霜环 ---------------- */
+  // 召唤类技能：光球环绕、浮游炮、天罚、雷霆、霜环
   function updateSkills(dt) {
     var i, j;
 
@@ -2222,6 +2244,7 @@
     e.rot += dt * (e.dashT > 0 ? 8 : 1.4);
   }
 
+  // BOSS AI：冲锋/炮击/召唤/终焉体四种行为
   function updateBoss(e, dt) {
     var dx = P.x - e.x, dy = P.y - e.y;
     var d = Math.sqrt(dx * dx + dy * dy) || 1;
@@ -2395,6 +2418,7 @@
     }
   }
 
+  // 敌人总更新：分派给各自的 AI，处理接触伤害
   function updateEnemies(dt) {
     var i, j;
     for (i = 0; i < enemies.length; i++) {
@@ -2477,6 +2501,7 @@
   }
 
   /* ---------------- 子弹 ---------------- */
+  // 子弹飞行与命中：碰撞、穿透、弹射、爆炸、连锁
   function updateBullets(dt) {
     for (var i = bullets.length - 1; i >= 0; i--) {
       var b = bullets[i];
@@ -3277,6 +3302,7 @@
     ctx.restore();
   }
 
+  // 绘制一帧：背景 → 实体 → 特效 → 玩家 → HUD
   function render() {
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     drawBackground();
@@ -3329,6 +3355,7 @@
 
   /* ---------------- 主循环 ---------------- */
   var last = 0, lastFrame = 0, acc = 0, needsRender = true;
+  // 主循环：算 dt，更新，绘制；静止界面不重绘
   function frame(now) {
     requestAnimationFrame(frame);
 
