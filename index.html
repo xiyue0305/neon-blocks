@@ -241,8 +241,9 @@
     <p class="sub">喘口气，方块不会等你太久。</p>
     <div class="build" id="build"></div>
     <button class="btn" id="resumeBtn">继续</button>
+    <button class="btn ghost" id="restartBtn">重新开始</button>
     <button class="btn ghost" id="dashEditBtn">调整闪避键位置</button>
-    <p class="tip">按 P 或 Esc 继续</p>
+    <p class="tip">按 P 或 Esc 继续 · R 重新开始</p>
   </div>
 
   <div class="panel" id="over">
@@ -824,6 +825,7 @@
       if (S.state === 'playing') pause();
       else if (S.state === 'paused') resume();
     }
+    if (k === 'r' && S.state === 'paused') armRestart();
     if (k === 'm') {
       audioOn = !audioOn;
       if (audioOn) { ensureAudio(); tone(660, 0.08, 'sine', 0.03, 880); }
@@ -902,7 +904,8 @@
     pauseBtn: document.getElementById('pauseBtn'),
     dashHint: document.getElementById('dashHint'),
     dashGrip: document.getElementById('dashGrip'),
-    continueBtn: document.getElementById('continueBtn')
+    continueBtn: document.getElementById('continueBtn'),
+    restartBtn: document.getElementById('restartBtn')
   };
 
   var TOUCH = false;
@@ -943,6 +946,20 @@
   if (el.continueBtn) el.continueBtn.addEventListener('click', function () { startGame(loadRun()); });
   document.getElementById('againBtn').addEventListener('click', function () { startGame(); });
   document.getElementById('resumeBtn').addEventListener('click', function () { resume(); });
+
+  var restartArmed = 0;
+  function armRestart() {
+    if (Date.now() - restartArmed < 3000) {
+      restartArmed = 0;
+      if (el.restartBtn) el.restartBtn.textContent = '重新开始';
+      startGame();
+      return;
+    }
+    restartArmed = Date.now();
+    if (el.restartBtn) el.restartBtn.textContent = '再点一次确认';
+    tone(300, 0.08, 'square', 0.02, 220);
+  }
+  if (el.restartBtn) el.restartBtn.addEventListener('click', armRestart);
 
   var dashPos = null;
   var dashSize = 68;
@@ -1633,6 +1650,8 @@
     S.state = 'paused';
     pointer.active = false;
     renderBuild();
+    restartArmed = 0;
+    if (el.restartBtn) el.restartBtn.textContent = '重新开始';
     showScreen('pause');
     bgmDuck(false);
     saveRun();
