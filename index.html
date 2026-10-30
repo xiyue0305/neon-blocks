@@ -1294,12 +1294,18 @@
     burst(bx, by, t.color, 30, 340);
   }
 
-  function spawnBossAdds(n) {
+  function spawnBossAdds(n, elite) {
     if (!S.boss) return;
     for (var i = 0; i < n; i++) {
-      var a = rand(0, TAU), rr = rand(100, 190);
-      spawnEnemy(Math.random() < 0.55 ? 'swift' : 'grunt',
-        S.boss.x + Math.cos(a) * rr, S.boss.y + Math.sin(a) * rr);
+      var a = rand(0, TAU), rr = rand(100, 200);
+      var key;
+      if (elite) key = i === 0 ? 'brute' : (Math.random() < 0.5 ? 'charger' : 'shooter');
+      else key = Math.random() < 0.55 ? 'swift' : 'grunt';
+      spawnEnemy(key, S.boss.x + Math.cos(a) * rr, S.boss.y + Math.sin(a) * rr);
+    }
+    for (var k = 0; k < n * 6; k++) {
+      var aa = rand(0, TAU);
+      burst(S.boss.x + Math.cos(aa) * 90, S.boss.y + Math.sin(aa) * 90, S.boss.color, 3, 160);
     }
   }
 
@@ -1314,12 +1320,12 @@
     if (S.waveSpawned < S.waveTotal) {
       S.spawnT -= dt;
       if (S.spawnT <= 0) {
-        var burstN = (S.wave >= 6 && Math.random() < 0.35) ? 2 : 1;
+        var burstN = (!S.boss && S.wave >= 6 && Math.random() < 0.35) ? 2 : 1;
         for (var i = 0; i < burstN && S.waveSpawned < S.waveTotal; i++) {
           edgeSpawn(pickType());
           S.waveSpawned++;
         }
-        S.spawnT = waveInterval();
+        S.spawnT = S.boss ? Math.max(1.25, waveInterval() * 2.4) : waveInterval();
       }
     } else if (enemies.length === 0) {
       clearWave();
@@ -2230,8 +2236,8 @@
       e.rot += dt * 1.6;
       e.sumT -= dt;
       if (e.sumT <= 0) {
-        e.sumT = 6.5;
-        spawnBossAdds(3);
+        e.sumT = 8.5;
+        spawnBossAdds(3, true);
         S.shake = Math.max(S.shake, 6);
         tone(160, 0.35, 'sawtooth', 0.03, 90);
       }
@@ -2255,9 +2261,23 @@
     e.x = clamp(e.x, -30, WORLD.w + 30);
     e.y = clamp(e.y, -30, WORLD.h + 30);
 
+    if (e.btype === 'overlord') {
+      e.shootT -= dt;
+      if (e.shootT <= 0 && mul > 0) {
+        e.shootT = 3.4;
+        bossRing(e, 12, 190);
+      }
+      e.aimT -= dt;
+      if (e.aimT <= 0 && mul > 0) {
+        e.aimT = 2.2;
+        bossAimed(e, 5, 0.14, 280);
+      }
+      if (e.mode === 'chase' && e.cd > 1.9) e.cd = Math.max(1.9, e.cd - dt * 0.6);
+    }
+
     var frac = e.hp / e.maxHp;
-    if (e.adds === 0 && frac < 0.66) { e.adds = 1; spawnBossAdds(3); S.shake = 10; }
-    if (e.adds === 1 && frac < 0.33) { e.adds = 2; spawnBossAdds(4); S.shake = 12; }
+    if (e.adds === 0 && frac < 0.66) { e.adds = 1; spawnBossAdds(2); S.shake = 10; }
+    if (e.adds === 1 && frac < 0.33) { e.adds = 2; spawnBossAdds(3); S.shake = 12; }
 
     var rr = e.r + P.r;
     if (d2(e.x, e.y, P.x, P.y) < rr * rr) {
