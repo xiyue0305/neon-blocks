@@ -633,14 +633,16 @@
 
   var bullets = [], enemies = [], particles = [], pickups = [],
       ebullets = [], explosions = [], arcs = [], strikes = [], bolts = [],
-      novas = [], drones = [], dmgTexts = [];
+      novas = [], drones = [], dmgTexts = [], zones = [];
 
   var TYPES = {
     grunt:   { r: 13, hp: 26,  speed: 92,  score: 10, xp: 1, color: '#ff5d7a', sides: 3, split: 0 },
     swift:   { r: 10, hp: 16,  speed: 178, score: 16, xp: 1, color: '#ffd166', sides: 4, split: 0 },
     brute:   { r: 24, hp: 125, speed: 56,  score: 45, xp: 3, color: '#b388ff', sides: 6, split: 2 },
     shooter: { r: 12, hp: 24,  speed: 64,  score: 22, xp: 2, color: '#ff9f43', sides: 4, split: 0 },
-    charger: { r: 14, hp: 46,  speed: 76,  score: 20, xp: 2, color: '#ff2d55', sides: 5, split: 0 }
+    charger: { r: 14, hp: 46,  speed: 76,  score: 20, xp: 2, color: '#ff2d55', sides: 5, split: 0 },
+    mage:    { r: 15, hp: 58,  speed: 62,  score: 55, xp: 2, color: '#c77dff', sides: 5, split: 0 },
+    priest:  { r: 14, hp: 64,  speed: 70,  score: 50, xp: 2, color: '#8dffc8', sides: 8, split: 0 }
   };
 
   var BOSS_TYPES = {
@@ -1223,10 +1225,12 @@
 
   function pickType() {
     var w = S.wave, r = Math.random();
-    if (w >= 9 && r < 0.1) return 'shooter';
-    if (w >= 6 && r < 0.24) return 'charger';
-    if (w >= 5 && r < 0.4) return 'brute';
-    if (w >= 3 && r < 0.64) return 'swift';
+    if (w >= 15 && r < 0.055) return 'priest';
+    if (w >= 12 && r < 0.13) return 'mage';
+    if (w >= 9 && r < 0.23) return 'shooter';
+    if (w >= 6 && r < 0.37) return 'charger';
+    if (w >= 5 && r < 0.53) return 'brute';
+    if (w >= 3 && r < 0.77) return 'swift';
     return 'grunt';
   }
 
@@ -1265,7 +1269,8 @@
       rot: rand(0, TAU), flash: 0, phase: rand(0, TAU), boss: false,
       slowT: 0, slowMul: 1, freezeT: 0,
       poisonT: 0, poisonDps: 0, pt: 0,
-      orbCd: 0, shootCd: rand(1.2, 2.4), dashCd: rand(1.2, 2.4), tele: 0, dashT: 0, ddx: 0, ddy: 0
+      orbCd: 0, shootCd: rand(1.2, 2.4), dashCd: rand(1.2, 2.4), tele: 0, dashT: 0, ddx: 0, ddy: 0,
+      castCd: rand(1.6, 3.0), healCd: rand(1.2, 2.6)
     });
   }
 
@@ -1552,6 +1557,7 @@
     novas.length = 0;
     drones.length = 0;
     dmgTexts.length = 0;
+    zones.length = 0;
 
     S.time = 0;
     S.score = 0;
@@ -2287,6 +2293,76 @@
     }
   }
 
+  function updateMage(e, dt, mul) {
+    var dx = P.x - e.x, dy = P.y - e.y;
+    var d = Math.sqrt(dx * dx + dy * dy) || 1;
+    var ux = dx / d, uy = dy / d;
+    if (d > 360) { e.x += ux * e.speed * mul * dt; e.y += uy * e.speed * mul * dt; }
+    else if (d < 270) { e.x -= ux * e.speed * mul * dt; e.y -= uy * e.speed * mul * dt; }
+    e.rot += dt * 1.4;
+    e.castCd -= dt;
+    if (e.castCd <= 0 && mul > 0 && d < 640) {
+      e.castCd = 3.6 + Math.random() * 0.9;
+      zones.push({ x: P.x, y: P.y, r: 98, t: 0, delay: 0.95 });
+      tone(260, 0.3, 'sine', 0.025, 520);
+    }
+  }
+
+  function updatePriest(e, dt, mul) {
+    var dx = P.x - e.x, dy = P.y - e.y;
+    var d = Math.sqrt(dx * dx + dy * dy) || 1;
+    if (d < 330) { e.x -= dx / d * e.speed * mul * dt; e.y -= dy / d * e.speed * mul * dt; }
+    else { e.x += dx / d * e.speed * 0.5 * mul * dt; e.y += dy / d * e.speed * 0.5 * mul * dt; }
+    e.rot += dt * 0.7;
+    e.healCd -= dt;
+    if (e.healCd <= 0) {
+      e.healCd = 4.2;
+      var healed = 0;
+      for (var i = 0; i < enemies.length && healed < 4; i++) {
+        var o = enemies[i];
+        if (o === e || o.boss || o.hp >= o.maxHp) continue;
+        if (d2(o.x, o.y, e.x, e.y) > 300 * 300) continue;
+        o.hp = Math.min(o.maxHp, o.hp + o.maxHp * 0.18 + 14);
+        healed++;
+        arcs.push({ x1: e.x, y1: e.y, x2: o.x, y2: o.y, life: 0.3, max: 0.3 });
+        burst(o.x, o.y, '#8dffc8', 5, 110);
+      }
+      if (healed) tone(760, 0.18, 'sine', 0.02, 980);
+    }
+  }
+
+  function updateZones(dt) {
+    for (var i = zones.length - 1; i >= 0; i--) {
+      var z = zones[i];
+      z.t += dt;
+      if (z.t >= z.delay) {
+        if (d2(z.x, z.y, P.x, P.y) < (z.r * 0.82) * (z.r * 0.82)) hurt();
+        boomSound();
+        burst(z.x, z.y, '#c77dff', 20, 260);
+        zones.splice(i, 1);
+      }
+    }
+  }
+
+  function drawZones() {
+    for (var i = 0; i < zones.length; i++) {
+      var z = zones[i];
+      var k = Math.min(1, z.t / z.delay);
+      ctx.save();
+      ctx.globalAlpha = 0.14 + k * 0.16;
+      ctx.fillStyle = '#c77dff';
+      ctx.beginPath(); ctx.arc(z.x, z.y, z.r, 0, TAU); ctx.fill();
+      ctx.globalAlpha = 0.7;
+      ctx.strokeStyle = '#e9c6ff';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(z.x, z.y, z.r, 0, TAU); ctx.stroke();
+      ctx.globalAlpha = 0.35 + k * 0.45;
+      ctx.fillStyle = '#f0dcff';
+      ctx.beginPath(); ctx.arc(z.x, z.y, Math.max(1, z.r * k), 0, TAU); ctx.fill();
+      ctx.restore();
+    }
+  }
+
   function updateEnemies(dt) {
     var i, j;
     for (i = 0; i < enemies.length; i++) {
@@ -2304,6 +2380,10 @@
         updateShooter(e, dt, mul);
       } else if (e.key === 'charger') {
         updateCharger(e, dt, mul);
+      } else if (e.key === 'mage') {
+        updateMage(e, dt, mul);
+      } else if (e.key === 'priest') {
+        updatePriest(e, dt, mul);
       } else {
         e.rot += dt * (e.key === 'swift' ? 2.6 : 0.8);
         var dx = P.x - e.x, dy = P.y - e.y;
@@ -2550,6 +2630,7 @@
     updateEnemies(dt);
     updateBullets(dt);
     updateEBullets(dt);
+    updateZones(dt);
     updateSkills(dt);
     updatePickups(dt);
     updateParticles(dt);
@@ -2792,6 +2873,15 @@
         ctx.fillStyle = 'rgba(10,10,16,0.8)';
         poly(4, e.r * 0.42);
         ctx.fill();
+      } else if (e.key === 'mage') {
+        ctx.strokeStyle = 'rgba(240,220,255,0.85)';
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(0, 0, e.r * 0.55, 0, TAU); ctx.stroke();
+      } else if (e.key === 'priest') {
+        ctx.strokeStyle = 'rgba(20,60,42,0.9)';
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(0, -e.r * 0.45); ctx.lineTo(0, e.r * 0.45);
+        ctx.moveTo(-e.r * 0.45, 0); ctx.lineTo(e.r * 0.45, 0); ctx.stroke();
       }
       ctx.restore();
 
@@ -3159,6 +3249,7 @@
     drawNovas();
     drawPickups();
     drawExplosions();
+    drawZones();
     drawEnemies();
     drawEBullets();
     drawBullets();
