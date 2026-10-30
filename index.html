@@ -377,7 +377,7 @@
   var P = {
     x: 0, y: 0, r: 13, hp: 5, maxHp: 5, speed: 262,
     fireCd: 0, fireRate: 0.22, dmg: 14, shots: 1, pierce: 0, bulletSpeed: 640, spread: 0.075,
-    magnet: 1, xpMul: 1, aimMove: 0, crit: 0.06, critDmg: 1.6, bounce: 0, bounceRange: 300, extraPicks: 0,
+    magnet: 1, xpMul: 1, aimMove: 0, crit: 0.08, critDmg: 1.6, bounce: 0, bounceRange: 300, extraPicks: 0,
     inv: 0, dashT: 0, dashCd: 0, dashCdMax: 2.2, dashDir: { x: 1, y: 0 }, trail: [],
 
     expR: 0, expMul: 0,
@@ -432,13 +432,13 @@
     { id: 'dmg', name: '火力强化', color: '#ff5d7a', max: 4,
       desc: '子弹伤害 +25%，暴击率 +3%',
       apply: function () { P.dmg *= 1.25; P.crit = Math.min(0.9, P.crit + 0.03); },
-      awName: '过载弹芯', awDesc: '暴击率 +16%，暴击伤害 +25%',
+      awName: '过载弹芯', awDesc: '暴击率 +18%，暴击伤害 +25%',
       awake: function () { P.crit = Math.min(0.9, P.crit + 0.16); P.critDmg += 0.25; } },
 
     { id: 'crit', name: '致命一击', color: '#ff8fa3', max: 3,
-      desc: '暴击率 +10%，暴击伤害 +30%',
-      apply: function () { P.crit = Math.min(0.9, P.crit + 0.10); P.critDmg += 0.30; },
-      awName: '处决', awDesc: '暴击率 +12%，暴击伤害 +70%',
+      desc: '暴击率 +12%，暴击伤害 +30%',
+      apply: function () { P.crit = Math.min(0.9, P.crit + 0.12); P.critDmg += 0.30; },
+      awName: '处决', awDesc: '暴击率 +15%，暴击伤害 +70%',
       awake: function () { P.crit = Math.min(0.95, P.crit + 0.12); P.critDmg += 0.7; } },
 
     { id: 'rate', name: '急速射击', color: '#ffd166', max: 4,
@@ -1264,7 +1264,7 @@
     P.xpMul = BASE.xpMul;
     P.dashCdMax = BASE.dashCdMax;
     P.spread = 0.075;
-    P.crit = 0.06;
+    P.crit = 0.08;
     P.critDmg = 1.6;
     P.bounce = 0;
     P.bounceRange = 300;
