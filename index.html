@@ -365,7 +365,7 @@
     boss: null,
     level: 1, xp: 0, xpNeed: 6, pendingLevels: 0,
     banner: '', bannerSub: '', bannerT: 0, bannerColor: '#5ee7ff',
-    orbAngle: 0, flash: 0, overAt: 0
+    orbAngle: 0, orbClearCd: 0, flash: 0, overAt: 0
   };
   try { S.best = parseInt(localStorage.getItem('neon_best') || '0', 10) || 0; } catch (e) { S.best = 0; }
 
@@ -1006,7 +1006,7 @@
 
   function waveHpScale(w) {
     w = Math.max(0, w);
-    return 1 + 0.25 * w + 0.12 * w * w;
+    return 1 + 0.22 * w + 0.10 * w * w;
   }
 
   function spawnEnemy(key, x, y) {
@@ -1296,6 +1296,7 @@
     S.pendingLevels = 0;
     S.bannerT = 0;
     S.orbAngle = 0;
+    S.orbClearCd = 0;
     S.flash = 0;
 
     for (var i = 0; i < UP.length; i++) UP[i].lvl = 0;
@@ -1690,11 +1691,28 @@
 
     if (P.orbs > 0) {
       S.orbAngle += dt * 2.5;
+      if (S.orbClearCd > 0) S.orbClearCd -= dt;
+
       for (i = 0; i < P.orbs; i++) {
         var a = S.orbAngle + i / P.orbs * TAU;
         var ox = P.x + Math.cos(a) * 86;
         var oy = P.y + Math.sin(a) * 86;
         P.orbPos[i] = { x: ox, y: oy };
+
+        // 光球消弹：有冷却，满级也不会变成绝对护盾
+        if (S.orbClearCd <= 0) {
+          for (j = ebullets.length - 1; j >= 0; j--) {
+            var eb = ebullets[j];
+            var er = 22 + eb.r;
+            if (d2(ox, oy, eb.x, eb.y) < er * er) {
+              ebullets.splice(j, 1);
+              S.orbClearCd = 0.14;
+              burst(eb.x, eb.y, '#8df3ff', 3, 80);
+              tone(1400, 0.04, 'sine', 0.008, 900);
+              break;
+            }
+          }
+        }
 
         for (j = enemies.length - 1; j >= 0; j--) {
           var e = enemies[j];
