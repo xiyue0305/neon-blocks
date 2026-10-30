@@ -1259,8 +1259,10 @@
 
   function waveHpScale(w) {
     w = Math.max(0, w);
-    if (w <= 30) return 1 + 0.22 * w + 0.10 * w * w;
-    return 97 + 5.5 * (w - 30);
+    var base = 1 + 0.22 * w + 0.10 * w * w;
+    // 30 波前保持原来的二次曲线，之后额外加速成长
+    if (w <= 30) return base;
+    return base * (1 + 0.05 * (w - 30));
   }
 
   function spawnEnemy(key, x, y) {
@@ -1285,7 +1287,7 @@
     var idx = Math.max(1, Math.round(wave / 10));
     var type = idx === 1 ? 'charger' : (idx === 2 ? 'gunner' : (idx === 3 ? 'summoner' : 'overlord'));
     var t = BOSS_TYPES[type];
-    var hp = Math.round(900 * Math.pow(waveHpScale(wave - 1), 0.85) * (1 + 0.3 * Math.min(5, idx - 1)) * t.hpMul);
+    var hp = Math.round(900 * Math.pow(waveHpScale(wave - 1), 0.9) * (1 + 0.3 * Math.min(5, idx - 1)) * t.hpMul);
 
     var ba = rand(0, TAU), br = 470;
     var bx = clamp(P.x + Math.cos(ba) * br, 120, WORLD.w - 120);
