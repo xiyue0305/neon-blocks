@@ -331,6 +331,7 @@
 
   /* ---------------- 音效 ---------------- */
   var actx = null, audioOn = true;
+  var sfxGain = null, bgmGain = null, noiseBuf = null, lastHitT = 0;
 
   function ensureAudio() {
     if (!actx) {
@@ -338,6 +339,220 @@
       catch (e) { actx = null; }
     }
     if (actx && actx.state === 'suspended') actx.resume();
+  }
+
+  function audioBus() {
+    if (!actx) return null;
+    if (!sfxGain) {
+      sfxGain = actx.createGain(); sfxGain.gain.value = 0.6; sfxGain.connect(actx.destination);
+      bgmGain = actx.createGain(); bgmGain.gain.value = 0; bgmGain.connect(actx.destination);
+    }
+    return sfxGain;
+  }
+
+  function ensureNoise() {
+    if (noiseBuf || !actx) return;
+    var len = Math.floor(actx.sampleRate * 0.35);
+    noiseBuf = actx.createBuffer(1, len, actx.sampleRate);
+    var d = noiseBuf.getChannelData(0);
+    for (var i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+  }
+
+  function noiseBurst(dur, vol, freq, q, when) {
+    if (!audioOn || !actx || !sfxGain) return;
+    var t0 = when || actx.currentTime;
+    ensureNoise();
+    var src = actx.createBufferSource(); src.buffer = noiseBuf;
+    var bp = actx.createBiquadFilter(); bp.type = 'bandpass';
+    bp.frequency.value = freq; bp.Q.value = q || 1;
+    var g = actx.createGain();
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(vol, t0 + 0.004);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    src.connect(bp); bp.connect(g); g.connect(sfxGain);
+    src.start(t0); src.stop(t0 + dur + 0.02);
+  }
+
+  // 打击音：低频闷响 + 短噪声，带随机音高，避免僵硬的电子哔声
+  function hitSound(kind) {
+    if (!audioOn || !actx) return;
+    audioBus();
+    var t0 = actx.currentTime;
+    if (t0 - lastHitT < 0.042) return;
+    lastHitT = t0;
+    var r = 0.88 + Math.random() * 0.3;
+
+    if (kind === 'crit') {
+      var o = actx.createOscillator(), g = actx.createGain();
+      o.type = 'triangle';
+      o.frequency.setValueAtTime(760 * r, t0);
+      o.frequency.exponentialRampToValueAtTime(220, t0 + 0.1);
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(0.15, t0 + 0.005);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.13);
+      o.connect(g); g.connect(sfxGain);
+      o.start(t0); o.stop(t0 + 0.15);
+      noiseBurst(0.06, 0.07, 2600 * r, 1.3);
+    } else {
+      var b = actx.createOscillator(), bg = actx.createGain();
+      b.type = 'sine';
+      b.frequency.setValueAtTime(160 * r, t0);
+      b.frequency.exponentialRampToValueAtTime(52, t0 + 0.08);
+      bg.gain.setValueAtTime(0.0001, t0);
+      bg.gain.exponentialRampToValueAtTime(0.11, t0 + 0.004);
+      bg.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.1);
+      b.connect(bg); bg.connect(sfxGain);
+      b.start(t0); b.stop(t0 + 0.12);
+      noiseBurst(0.04, 0.045, 1500 * r, 0.85);
+    }
+  }
+
+  function boomSound() {
+    if (!audioOn || !actx) return;
+    audioBus();
+    var t0 = actx.currentTime;
+    var o = actx.createOscillator(), g = actx.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(95, t0);
+    o.frequency.exponentialRampToValueAtTime(28, t0 + 0.26);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(0.18, t0 + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.3);
+    o.connect(g); g.connect(sfxGain);
+    o.start(t0); o.stop(t0 + 0.32);
+    noiseBurst(0.2, 0.1, 650, 0.7);
+  }
+
+  function hurtSound() {
+    if (!audioOn || !actx) return;
+    audioBus();
+    var t0 = actx.currentTime;
+    var o = actx.createOscillator(), g = actx.createGain();
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(180, t0);
+    o.frequency.exponentialRampToValueAtTime(60, t0 + 0.22);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(0.16, t0 + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.26);
+    o.connect(g); g.connect(sfxGain);
+    o.start(t0); o.stop(t0 + 0.28);
+    noiseBurst(0.14, 0.09, 380, 0.8);
+  }
+
+  /* ---------------- 背景音乐（程序生成，无外部文件） ---------------- */
+  var BGM_LEVEL = 0.085;
+  var bgmTimer = null, bgmStep = 0, bgmNext = 0;
+  var BGM_ROOTS = [110, 87.31, 130.81, 98];
+  var BGM_CHORDS = [
+    [220, 261.63, 329.63],
+    [174.61, 220, 261.63],
+    [261.63, 329.63, 392],
+    [196, 246.94, 293.66]
+  ];
+
+  function bgmStart() {
+    if (!audioOn || !actx) return;
+    audioBus();
+    ensureNoise();
+    if (bgmTimer) {
+      bgmGain.gain.cancelScheduledValues(actx.currentTime);
+      bgmGain.gain.setValueAtTime(bgmGain.gain.value, actx.currentTime);
+      bgmGain.gain.linearRampToValueAtTime(BGM_LEVEL, actx.currentTime + 1.2);
+      return;
+    }
+    bgmNext = actx.currentTime + 0.15;
+    bgmStep = 0;
+    bgmGain.gain.cancelScheduledValues(actx.currentTime);
+    bgmGain.gain.setValueAtTime(0, actx.currentTime);
+    bgmGain.gain.linearRampToValueAtTime(BGM_LEVEL, actx.currentTime + 1.6);
+    bgmTimer = setInterval(bgmSchedule, 90);
+  }
+
+  function bgmDuck(on) {
+    if (!actx || !bgmGain) return;
+    bgmGain.gain.cancelScheduledValues(actx.currentTime);
+    bgmGain.gain.setValueAtTime(bgmGain.gain.value, actx.currentTime);
+    bgmGain.gain.linearRampToValueAtTime(on ? BGM_LEVEL : BGM_LEVEL * 0.18, actx.currentTime + 0.5);
+  }
+
+  function bgmStop(fade) {
+    if (!bgmTimer) return;
+    clearInterval(bgmTimer); bgmTimer = null;
+    if (actx && bgmGain) {
+      bgmGain.gain.cancelScheduledValues(actx.currentTime);
+      bgmGain.gain.setValueAtTime(bgmGain.gain.value, actx.currentTime);
+      bgmGain.gain.linearRampToValueAtTime(0, actx.currentTime + (fade || 0.8));
+    }
+  }
+
+  function bgmSchedule() {
+    if (!actx || !bgmTimer) return;
+    var ahead = actx.currentTime + 0.3;
+    while (bgmNext < ahead) {
+      bgmPlayStep(bgmNext, bgmStep);
+      bgmStep = (bgmStep + 1) % 32;
+      bgmNext += 0.42;
+    }
+  }
+
+  function bgmPlayStep(t, step) {
+    var ci = Math.floor(step / 8) % 4;
+    var chord = BGM_CHORDS[ci];
+
+    if (step % 8 === 0) {
+      for (var i = 0; i < chord.length; i++) {
+        var o = actx.createOscillator(), g = actx.createGain();
+        var f = actx.createBiquadFilter();
+        f.type = 'lowpass'; f.frequency.value = 1400;
+        o.type = 'triangle';
+        o.frequency.value = chord[i];
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.linearRampToValueAtTime(0.05, t + 1.1);
+        g.gain.linearRampToValueAtTime(0.0001, t + 3.1);
+        o.connect(f); f.connect(g); g.connect(bgmGain);
+        o.start(t); o.stop(t + 3.2);
+      }
+    }
+
+    if (step % 2 === 0) {
+      var b = actx.createOscillator(), bg = actx.createGain();
+      b.type = 'sine';
+      b.frequency.setValueAtTime(BGM_ROOTS[ci], t);
+      b.frequency.exponentialRampToValueAtTime(BGM_ROOTS[ci] * 0.5, t + 0.35);
+      bg.gain.setValueAtTime(0.0001, t);
+      bg.gain.exponentialRampToValueAtTime(0.16, t + 0.02);
+      bg.gain.exponentialRampToValueAtTime(0.0001, t + 0.5);
+      b.connect(bg); bg.connect(bgmGain);
+      b.start(t); b.stop(t + 0.52);
+    }
+
+    if (step % 4 !== 3) {
+      var n = chord[step % 3] * (step % 8 < 4 ? 2 : 1);
+      var po = actx.createOscillator(), pg = actx.createGain();
+      var pf = actx.createBiquadFilter();
+      pf.type = 'lowpass'; pf.frequency.value = 2600;
+      po.type = 'sine';
+      po.frequency.value = n;
+      pg.gain.setValueAtTime(0.0001, t);
+      pg.gain.exponentialRampToValueAtTime(0.035, t + 0.012);
+      pg.gain.exponentialRampToValueAtTime(0.0001, t + 0.28);
+      po.connect(pf); pf.connect(pg); pg.connect(bgmGain);
+      po.start(t); po.stop(t + 0.3);
+    }
+
+    if (step % 4 === 2) {
+      var src = actx.createBufferSource();
+      if (noiseBuf) {
+        src.buffer = noiseBuf;
+        var hp = actx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 6000;
+        var hg = actx.createGain();
+        hg.gain.setValueAtTime(0.0001, t);
+        hg.gain.exponentialRampToValueAtTime(0.02, t + 0.005);
+        hg.gain.exponentialRampToValueAtTime(0.0001, t + 0.07);
+        src.connect(hp); hp.connect(hg); hg.connect(bgmGain);
+        src.start(t); src.stop(t + 0.09);
+      }
+    }
   }
 
   function tone(freq, dur, type, vol, target) {
@@ -1308,6 +1523,7 @@
   /* ---------------- 游戏流程 ---------------- */
   function startGame(save) {
     ensureAudio();
+    bgmStart();
     enemies.length = 0;
     bullets.length = 0;
     particles.length = 0;
@@ -1384,6 +1600,7 @@
     pointer.active = false;
     renderBuild();
     showScreen('pause');
+    bgmDuck(false);
     saveRun();
   }
 
@@ -1391,6 +1608,7 @@
     if (S.state !== 'paused') return;
     S.state = 'playing';
     showScreen(null);
+    bgmDuck(true);
   }
 
   function renderBuild() {
@@ -1414,6 +1632,7 @@
 
   function gameOver() {
     S.state = 'over';
+    bgmStop(1.2);
     clearRun();
     refreshContinue();
     S.overAt = performance.now();
@@ -1502,6 +1721,7 @@
     if (!e || e.hp <= 0) return;
     e.hp -= dmg;
     e.flash = 0.1;
+    if (kind !== 'poison') hitSound(kind === 'crit' ? 'crit' : 'hit');
     addDamageText(e.x, e.y - e.r * 0.6, dmg, kind || 'normal');
     if (e.hp <= 0) killEnemy(e, idx);
   }
@@ -1520,6 +1740,7 @@
       particles.push(makeParticle(x, y, Math.cos(a) * sp, Math.sin(a) * sp, 2.6, 0.3, color));
     }
     S.shake = Math.max(S.shake, 3.5);
+    boomSound();
   }
 
   function chainLightning(x, y, count, dmg, exclude) {
@@ -1720,7 +1941,7 @@
     S.combo = Math.floor(S.combo / 2);
     S.comboT = 2.4;
     burst(P.x, P.y, '#ff6b8a', 18, 270);
-    tone(150, 0.26, 'sawtooth', 0.05, 62);
+    hurtSound();
     if (P.hp <= 0) gameOver();
   }
 
