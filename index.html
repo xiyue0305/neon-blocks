@@ -377,7 +377,7 @@
   var P = {
     x: 0, y: 0, r: 13, hp: 5, maxHp: 5, speed: 262,
     fireCd: 0, fireRate: 0.22, dmg: 14, shots: 1, pierce: 0, bulletSpeed: 640, spread: 0.075,
-    magnet: 1, xpMul: 1, aimMove: 0, crit: 0.05, critDmg: 1.5, bounce: 0, bounceRange: 300, extraPicks: 0,
+    magnet: 1, xpMul: 1, aimMove: 0, crit: 0.06, critDmg: 1.6, bounce: 0, bounceRange: 300, extraPicks: 0,
     inv: 0, dashT: 0, dashCd: 0, dashCdMax: 2.2, dashDir: { x: 1, y: 0 }, trail: [],
 
     expR: 0, expMul: 0,
@@ -430,16 +430,16 @@
   /* ---------------- 强化（满级觉醒） ---------------- */
   var UP = [
     { id: 'dmg', name: '火力强化', color: '#ff5d7a', max: 4,
-      desc: '子弹伤害 +25%，暴击率 +2%',
-      apply: function () { P.dmg *= 1.25; P.crit = Math.min(0.9, P.crit + 0.02); },
-      awName: '过载弹芯', awDesc: '暴击率 +15%，暴击伤害 +20%',
-      awake: function () { P.crit = Math.min(0.9, P.crit + 0.15); P.critDmg += 0.2; } },
+      desc: '子弹伤害 +25%，暴击率 +3%',
+      apply: function () { P.dmg *= 1.25; P.crit = Math.min(0.9, P.crit + 0.03); },
+      awName: '过载弹芯', awDesc: '暴击率 +16%，暴击伤害 +25%',
+      awake: function () { P.crit = Math.min(0.9, P.crit + 0.16); P.critDmg += 0.25; } },
 
     { id: 'crit', name: '致命一击', color: '#ff8fa3', max: 3,
-      desc: '暴击率 +8%，暴击伤害 +25%',
-      apply: function () { P.crit = Math.min(0.9, P.crit + 0.08); P.critDmg += 0.25; },
-      awName: '处决', awDesc: '暴击率 +10%，暴击伤害 +60%',
-      awake: function () { P.crit = Math.min(0.95, P.crit + 0.1); P.critDmg += 0.6; } },
+      desc: '暴击率 +10%，暴击伤害 +30%',
+      apply: function () { P.crit = Math.min(0.9, P.crit + 0.10); P.critDmg += 0.30; },
+      awName: '处决', awDesc: '暴击率 +12%，暴击伤害 +70%',
+      awake: function () { P.crit = Math.min(0.95, P.crit + 0.12); P.critDmg += 0.7; } },
 
     { id: 'rate', name: '急速射击', color: '#ffd166', max: 4,
       desc: '射速 +18%',
@@ -448,14 +448,14 @@
       awake: function () { P.fireRate *= 0.75; P.bulletSpeed *= 1.15; } },
 
     { id: 'shots', name: '多重弹幕', color: '#5ee7ff', max: 3,
-      desc: '每次多发射 1 颗子弹，暴击伤害 +5%',
-      apply: function () { P.shots += 1; P.critDmg += 0.05; },
+      desc: '每次多发射 1 颗子弹，暴击伤害 +6%',
+      apply: function () { P.shots += 1; P.critDmg += 0.06; },
       awName: '弹幕风暴', awDesc: '再多 1 颗子弹，弹道更集中',
       awake: function () { P.shots += 1; P.spread *= 0.65; } },
 
     { id: 'pierce', name: '穿透弹', color: '#7dffcf', max: 2,
-      desc: '子弹额外穿透 1 个敌人，暴击伤害 +8%',
-      apply: function () { P.pierce += 1; P.critDmg += 0.08; },
+      desc: '子弹额外穿透 1 个敌人，暴击伤害 +10%',
+      apply: function () { P.pierce += 1; P.critDmg += 0.10; },
       awName: '贯穿', awDesc: '额外穿透 2 个，伤害 +10%',
       awake: function () { P.pierce += 2; P.dmg *= 1.1; } },
 
@@ -465,7 +465,7 @@
       awName: '跳弹', awDesc: '弹射次数再 +2，弹射距离更远',
       awake: function () { P.bounce += 2; P.bounceRange = 420; } },
 
-    { id: 'multi', name: '双选', color: '#ff8fa3', max: 0, weight: 0.3,
+    { id: 'multi', name: '双选', color: '#ff8fa3', max: 0, weight: 0.6,
       desc: '每次升级可以多选 1 项强化',
       apply: function () { P.extraPicks += 1; },
       awName: '', awDesc: '', awake: null },
@@ -1264,8 +1264,8 @@
     P.xpMul = BASE.xpMul;
     P.dashCdMax = BASE.dashCdMax;
     P.spread = 0.075;
-    P.crit = 0.05;
-    P.critDmg = 1.5;
+    P.crit = 0.06;
+    P.critDmg = 1.6;
     P.bounce = 0;
     P.bounceRange = 300;
     P.extraPicks = 0;
