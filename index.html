@@ -287,12 +287,14 @@
   var CAM_PAD = 90;
 
   function resize() {
-    DPR = Math.min(2, window.devicePixelRatio || 1);
+    DPR = Math.min(TOUCH ? 1.5 : 2, window.devicePixelRatio || 1);
     W = Math.max(320, window.innerWidth);
     H = Math.max(240, window.innerHeight);
     cv.width = Math.round(W * DPR);
     cv.height = Math.round(H * DPR);
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+
+    needsRender = true;
 
     bgGrad = ctx.createLinearGradient(0, 0, 0, H);
     bgGrad.addColorStop(0, '#080d18');
@@ -929,6 +931,7 @@
   }
 
   function showScreen(name) {
+    needsRender = true;
     el.menu.classList.toggle('on', name === 'menu');
     el.levelup.classList.toggle('on', name === 'levelup');
     el.pause.classList.toggle('on', name === 'pause');
@@ -1692,7 +1695,8 @@
       particles.push(makeParticle(x, y, Math.cos(a) * sp, Math.sin(a) * sp,
         rand(1.4, 3.6), rand(0.24, 0.62), color));
     }
-    if (particles.length > 700) particles.splice(0, particles.length - 700);
+    var cap = TOUCH ? 300 : 700;
+    if (particles.length > cap) particles.splice(0, particles.length - cap);
   }
 
   function nearestEnemyTo(x, y, maxDist, exclude) {
@@ -3295,26 +3299,42 @@
   }
 
   /* ---------------- 主循环 ---------------- */
-  var last = 0;
+  var last = 0, lastFrame = 0, acc = 0, needsRender = true;
   function frame(now) {
     requestAnimationFrame(frame);
 
-    if (!last) last = now;
+    if (!last) { last = now; return; }
     var dt = (now - last) / 1000;
     last = now;
-    if (dt > 0.033) dt = 0.033;
     if (dt < 0) dt = 0;
+    if (dt > 0.05) dt = 0.05;
 
-    if (S.state === 'playing' && !dashEdit) {
-      update(dt);
-      if (S.state === 'playing' && S.pendingLevels > 0) openLevelUp();
-    } else if (S.state === 'over') {
-      updateParticles(dt);
-      updateFx(dt);
+    var live = S.state === 'playing' || S.state === 'over';
+    if (!live) {
+      if (!needsRender) return;
+      needsRender = false;
+      render();
+      updateHUD();
+      return;
     }
 
-    if (S.shake > 0) S.shake = Math.max(0, S.shake - dt * 46);
-    if (S.bannerT > 0) S.bannerT -= dt;
+    // 高刷屏锁到 60 帧，避免 120Hz 白白多画一倍
+    acc += dt;
+    if (now - lastFrame < 15.5) return;
+    lastFrame = now;
+    var step = Math.min(0.033, acc);
+    acc = 0;
+
+    if (S.state === 'playing' && !dashEdit) {
+      update(step);
+      if (S.state === 'playing' && S.pendingLevels > 0) openLevelUp();
+    } else if (S.state === 'over') {
+      updateParticles(step);
+      updateFx(step);
+    }
+
+    if (S.shake > 0) S.shake = Math.max(0, S.shake - step * 46);
+    if (S.bannerT > 0) S.bannerT -= step;
 
     render();
     updateHUD();
