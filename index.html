@@ -697,8 +697,8 @@
       apply: function () { P.dmg *= 1.07; addCrit(0.01); },
       awName: '', awDesc: '', awake: null },
 
-    { id: 'multi', name: '双选', color: '#ff8fa3', max: 0, weight: 0.6,
-      desc: '每次升级可以多选 1 项强化',
+    { id: 'multi', name: '双选', color: '#ff8fa3', max: 4, weight: 0.6,
+      desc: '每次升级多选 1 项强化（最多 4 层）',
       apply: function () { P.extraPicks += 1; },
       awName: '', awDesc: '', awake: null },
 
