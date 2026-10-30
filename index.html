@@ -2477,10 +2477,10 @@
 
           if (!e.boss && e.kbCd <= 0) {
             var m = Math.sqrt(b.vx * b.vx + b.vy * b.vy) || 1;
-            var kbp = 5 * Math.max(0.35, 1 - e.r / 46);
+            var kbp = 2.2 * Math.max(0.4, 1 - e.r / 50);
             e.x += (b.vx / m) * kbp;
             e.y += (b.vy / m) * kbp;
-            e.kbCd = 0.13;
+            e.kbCd = 0.25;
           }
 
           if (b.slowMul > 0) { e.slowT = P.slowT; e.slowMul = b.slowMul; }
