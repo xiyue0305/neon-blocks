@@ -229,7 +229,7 @@
     <button class="btn" id="continueBtn" style="display:none">继续游戏</button>
     <button class="btn" id="startBtn">开始游戏</button>
     <p class="tip">吃经验升级，技能满级会「觉醒」质变。</p>
-    <p class="tip" style="opacity:.5;font-size:10px">v1.3</p>
+    <p class="tip" style="opacity:.5;font-size:10px">v1.4</p>
   </div>
 
   <div class="panel" id="levelup">
@@ -292,8 +292,12 @@
 
   function resize() {
     DPR = Math.min(TOUCH ? 1.5 : 2, window.devicePixelRatio || 1);
-    W = Math.max(320, window.innerWidth);
-    H = Math.max(240, window.innerHeight);
+    // 用 visualViewport 拿真实可视区域，部分 WebView 的 innerWidth 不准
+    var vv = window.visualViewport;
+    var vw = (vv && vv.width) || window.innerWidth || 0;
+    var vh = (vv && vv.height) || window.innerHeight || 0;
+    W = Math.max(320, Math.round(vw));
+    H = Math.max(240, Math.round(vh));
     cv.width = Math.round(W * DPR);
     cv.height = Math.round(H * DPR);
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
@@ -327,6 +331,17 @@
     applyDashPos();
   }
   window.addEventListener('resize', resize);
+  window.addEventListener('orientationchange', function () {
+    setTimeout(resize, 120);
+    setTimeout(resize, 400);
+  });
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', resize);
+  }
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) setTimeout(resize, 120);
+  });
+  setTimeout(resize, 300);
 
   // 镜头：平滑跟随玩家，并限制在世界边界内
   function updateCamera(dt, snap) {
