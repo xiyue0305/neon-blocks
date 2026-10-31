@@ -229,7 +229,7 @@
     <button class="btn" id="continueBtn" style="display:none">继续游戏</button>
     <button class="btn" id="startBtn">开始游戏</button>
     <p class="tip">吃经验升级，技能满级会「觉醒」质变。</p>
-    <p class="tip" style="opacity:.5;font-size:10px">v1.4</p>
+    <p class="tip" style="opacity:.5;font-size:10px">v1.5</p>
   </div>
 
   <div class="panel" id="levelup">
@@ -290,6 +290,14 @@
   var cam = { x: 0, y: 0 };
   var CAM_PAD = 90;
 
+  var dbgMode = '';
+  function updateDbg(mode) {
+    if (mode !== undefined) dbgMode = mode;
+    if (!el.dbg) return;
+    el.dbg.textContent = Math.round(W) + 'x' + Math.round(H) + ' dpr' + DPR +
+      (TOUCH ? ' touch' : '') + (dbgMode ? ' ' + dbgMode : '');
+  }
+
   function resize() {
     DPR = Math.min(TOUCH ? 1.5 : 2, window.devicePixelRatio || 1);
     // 用 visualViewport 拿真实可视区域，部分 WebView 的 innerWidth 不准
@@ -304,7 +312,7 @@
 
     needsRender = true;
 
-    if (el.dbg) el.dbg.textContent = Math.round(W) + 'x' + Math.round(H) + ' dpr' + DPR + (TOUCH ? ' touch' : '');
+    updateDbg();
 
     bgGrad = ctx.createLinearGradient(0, 0, 0, H);
     bgGrad.addColorStop(0, '#080d18');
@@ -859,28 +867,74 @@
     pointer.x = e.clientX;
     pointer.y = e.clientY;
   }
-  cv.addEventListener('pointerdown', function (e) {
+
+  var pointerSeen = false;
+
+  function inputStart(x, y, type, id) {
+    updateDbg(type === 'touch' ? 'tch' : 'ptr');
     ensureAudio();
     if (S.state !== 'playing') return;
     pointer.active = true;
-    pointer.id = e.pointerId;
-    pointer.type = e.pointerType || 'mouse';
-    pointer.ax = e.clientX;
-    pointer.ay = e.clientY;
-    pointerPos(e);
+    pointer.id = id;
+    pointer.type = type;
+    pointer.ax = x;
+    pointer.ay = y;
+    pointer.x = x;
+    pointer.y = y;
+  }
+
+  function inputMove(x, y) {
+    if (!pointer.active) return;
+    pointer.x = x;
+    pointer.y = y;
+  }
+
+  function inputEnd() {
+    pointer.active = false;
+    pointer.id = -1;
+  }
+
+  cv.addEventListener('pointerdown', function (e) {
+    pointerSeen = true;
+    inputStart(e.clientX, e.clientY, e.pointerType || 'mouse', e.pointerId);
     try { cv.setPointerCapture(e.pointerId); } catch (err) {}
   });
   cv.addEventListener('pointermove', function (e) {
     if (!pointer.active || e.pointerId !== pointer.id) return;
-    pointerPos(e);
+    inputMove(e.clientX, e.clientY);
   });
-  function endPointer(e) {
-    if (e && e.pointerId !== pointer.id) return;
-    pointer.active = false;
-    pointer.id = -1;
-  }
-  cv.addEventListener('pointerup', endPointer);
-  cv.addEventListener('pointercancel', endPointer);
+  cv.addEventListener('pointerup', function (e) {
+    if (e.pointerId !== pointer.id) return;
+    inputEnd();
+  });
+  cv.addEventListener('pointercancel', function (e) {
+    if (e.pointerId !== pointer.id) return;
+    inputEnd();
+  });
+
+  // 兜底：部分老 WebView 只发 touch、不发 pointer，这里两套都接
+  cv.addEventListener('touchstart', function (e) {
+    if (pointerSeen) return;
+    e.preventDefault();
+    var t = e.changedTouches[0];
+    if (!t) return;
+    inputStart(t.clientX, t.clientY, 'touch', t.identifier);
+  }, { passive: false });
+  cv.addEventListener('touchmove', function (e) {
+    if (pointerSeen) return;
+    var t = e.changedTouches[0];
+    if (!t) return;
+    e.preventDefault();
+    inputMove(t.clientX, t.clientY);
+  }, { passive: false });
+  cv.addEventListener('touchend', function (e) {
+    if (pointerSeen) return;
+    inputEnd();
+  });
+  cv.addEventListener('touchcancel', function (e) {
+    if (pointerSeen) return;
+    inputEnd();
+  });
   cv.addEventListener('contextmenu', function (e) { e.preventDefault(); });
 
   window.addEventListener('pagehide', function () { saveRun(); });
